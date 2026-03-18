@@ -1,82 +1,41 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify
 import os
-import discord
-from discord.ext import commands
+import requests
+import traceback
 
 app = Flask(__name__)
 
-DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-GUILD_ID = int(os.getenv("DISCORD_GUILD_ID"))
-REVIEWS_CHANNEL_ID = int(os.getenv("REVIEWS_CHANNEL_ID"))
-SALES_CHANNEL_ID = int(os.getenv("SALES_CHANNEL_ID"))
-STOCK_CHANNEL_ID = int(os.getenv("STOCK_CHANNEL_ID"))
-
-intents = discord.Intents.default()
-bot = commands.Bot(command_prefix="!", intents=intents)
-
-@bot.event
-async def on_ready():
-    print(f"Logged in as {bot.user}")
-
-def run_bot():
-    import threading
-    def _run():
-        bot.run(DISCORD_BOT_TOKEN)
-    threading.Thread(target=_run, daemon=True).start()
+DISCORD_WEBHOOK_URL = os.getenv("https://discord.com/api/webhooks/1483873834024304772/T9bbCviBm_sJRZH3NMpYGBSQ3ErN5V7X_j1SYaAUCfQEHqLwB0gCpXA7yL8EqEB3UBFh")
 
 @app.route("/")
 def home():
-    return {"status": "ok"}
+    return "OK", 200
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    data = request.json
-    print("SELLAUTH EVENT:", data)
+    try:
+        raw_body = request.get_data(as_text=True)
+        print("===== WEBHOOK HIT =====", flush=True)
+        print("RAW BODY:", raw_body, flush=True)
 
-    event = data.get("event")
+        data = request.get_json(silent=True)
+        print("PARSED JSON:", data, flush=True)
 
-    if event == "order:completed":
-        product = data.get("product_name", "Unknown")
-        price = data.get("price", "0")
+        if not DISCORD_WEBHOOK_URL:
+            print("ERROR: DISCORD_WEBHOOK_URL is missing", flush=True)
+            return jsonify({"error": "DISCORD_WEBHOOK_URL missing"}), 500
 
-        channel = bot.get_channel(SALES_CHANNEL_ID)
-        if channel:
-            embed = discord.Embed(
-                title="💰 New Purchase",
-                description=f"**{product}** bought for **${price}**",
-                color=0x00ff00
-            )
-            bot.loop.create_task(channel.send(embed=embed))
+        payload = {
+            "content": f"SellAuth webhook received:\n```{raw_body[:1500]}```"
+        }
 
-    elif event == "review:created":
-        review = data.get("review", "No text")
-        rating = data.get("rating", "0")
+        resp = requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=15)
+        print("DISCORD STATUS:", resp.status_code, flush=True)
+        print("DISCORD RESPONSE:", resp.text, flush=True)
 
-        channel = bot.get_channel(REVIEWS_CHANNEL_ID)
-        if channel:
-            embed = discord.Embed(
-                title="⭐ New Review",
-                description=review,
-                color=0xffff00
-            )
-            embed.add_field(name="Rating", value=f"{rating}/5")
-            bot.loop.create_task(channel.send(embed=embed))
+        return jsonify({"ok": True}), 200
 
-    elif event == "product:stock_updated":
-        product = data.get("product_name", "Unknown")
-
-        channel = bot.get_channel(STOCK_CHANNEL_ID)
-        if channel:
-            embed = discord.Embed(
-                title="📦 Stock Updated",
-                description=f"**{product}** stock updated",
-                color=0x3498db
-            )
-            bot.loop.create_task(channel.send(embed=embed))
-
-    return {"status": "ok"}, 200
-
-if __name__ == "__main__":
-    run_bot()
-    port = int(os.getenv("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    except Exception as e:
+        print("EXCEPTION:", str(e), flush=True)
+        print(traceback.format_exc(), flush=True)
+        return jsonify({"error": str(e)}), 500
