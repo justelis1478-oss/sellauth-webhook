@@ -14,28 +14,26 @@ def home():
 @app.route("/webhook", methods=["POST"])
 def webhook():
     try:
-        raw_body = request.get_data(as_text=True)
         print("===== WEBHOOK HIT =====", flush=True)
-        print("RAW BODY:", raw_body, flush=True)
 
-        data = request.get_json(silent=True)
-        print("PARSED JSON:", data, flush=True)
+        # 🔥 NEBENAUDOJAM get_json
+        raw = request.get_data(as_text=True)
+        print("RAW:", raw, flush=True)
 
         if not DISCORD_WEBHOOK_URL:
-            print("ERROR: DISCORD_WEBHOOK_URL is missing", flush=True)
-            return jsonify({"error": "DISCORD_WEBHOOK_URL missing"}), 500
+            print("NO WEBHOOK URL", flush=True)
+            return "error", 500
 
-        payload = {
-            "content": f"SellAuth webhook received:\n```{raw_body[:1500]}```"
+        msg = {
+            "content": f"📦 Stock update:\n```{raw[:1500]}```"
         }
 
-        resp = requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=15)
-        print("DISCORD STATUS:", resp.status_code, flush=True)
-        print("DISCORD RESPONSE:", resp.text, flush=True)
+        r = requests.post(DISCORD_WEBHOOK_URL, json=msg)
+        print("DISCORD:", r.status_code, flush=True)
 
-        return jsonify({"ok": True}), 200
+        return "ok", 200
 
     except Exception as e:
-        print("EXCEPTION:", str(e), flush=True)
+        print("ERROR:", str(e), flush=True)
         print(traceback.format_exc(), flush=True)
-        return jsonify({"error": str(e)}), 500
+        return "fail", 500
