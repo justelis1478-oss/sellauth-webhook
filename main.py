@@ -20,11 +20,28 @@ def send_to_discord(webhook_url, content, label):
             json={"content": content},
             timeout=15
         )
+
         print(f"{label}: discord status = {response.status_code}", flush=True)
         print(f"{label}: discord response = {response.text}", flush=True)
 
         if response.status_code == 429:
-            print(f"{label}: rate limited by Discord", flush=True)
+            retry_after = 5
+            try:
+                data = response.json()
+                retry_after = float(data.get("retry_after", 5))
+            except Exception:
+                pass
+
+            print(f"{label}: rate limited, retrying after {retry_after} seconds", flush=True)
+            time.sleep(retry_after)
+
+            retry_response = requests.post(
+                webhook_url,
+                json={"content": content},
+                timeout=15
+            )
+            print(f"{label}: retry status = {retry_response.status_code}", flush=True)
+            print(f"{label}: retry response = {retry_response.text}", flush=True)
 
     except Exception as e:
         print(f"{label}: error sending to Discord: {e}", flush=True)
@@ -51,8 +68,6 @@ def feedback():
 def restock():
     data = request.json
     print("RESTOCK HIT:", data, flush=True)
-
-    time.sleep(1)
 
     content = f"📦 Restock:\n```{data}```"
     send_to_discord(RESTOCK_WEBHOOK, content, "RESTOCK")
