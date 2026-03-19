@@ -8,6 +8,7 @@ app = Flask(__name__)
 FEEDBACK_WEBHOOK = os.getenv("FEEDBACK_WEBHOOK_URL")
 RESTOCK_WEBHOOK = os.getenv("RESTOCK_WEBHOOK_URL")
 
+
 def send_to_discord(webhook_url, content, label):
     if not webhook_url:
         print(f"{label}: webhook URL missing", flush=True)
@@ -28,10 +29,12 @@ def send_to_discord(webhook_url, content, label):
     except Exception as e:
         print(f"{label}: error sending to Discord: {e}", flush=True)
 
+
 @app.route("/")
 def home():
     print("HOME HIT", flush=True)
     return "OK", 200
+
 
 @app.route("/feedback", methods=["POST"])
 def feedback():
@@ -43,12 +46,12 @@ def feedback():
 
     return "OK", 200
 
+
 @app.route("/restock", methods=["POST"])
 def restock():
     data = request.json
     print("RESTOCK HIT:", data, flush=True)
 
-    # maza pauze, kad sumazintu spam / limitu tikimybe
     time.sleep(1)
 
     content = f"📦 Restock:\n```{data}```"
