@@ -4,8 +4,8 @@ import os
 
 app = Flask(__name__)
 
-FEEDBACK_WEBHOOK = os.getenv("https://discord.com/api/webhooks/1484192884214468810/sim7ykN4Cj9F3xXsSZflIkB_nQbFMxgaXo30vQocL891dN6EWRub4B_xJHd0hYn4DOXb")
-RESTOCK_WEBHOOK = os.getenv("https://discord.com/api/webhooks/1483873834024304772/T9bbCviBm_sJRZH3NMpYGBSQ3ErN5V7X_j1SYaAUCfQEHqLwB0gCpXA7yL8EqEB3UBFh")
+FEEDBACK_WEBHOOK = os.getenv("FEEDBACK_WEBHOOK_URL")
+RESTOCK_WEBHOOK = os.getenv("RESTOCK_WEBHOOK_URL")
 
 @app.route("/")
 def home():
