@@ -1,11 +1,32 @@
 from flask import Flask, request
 import requests
 import os
+import time
 
 app = Flask(__name__)
 
 FEEDBACK_WEBHOOK = os.getenv("FEEDBACK_WEBHOOK_URL")
 RESTOCK_WEBHOOK = os.getenv("RESTOCK_WEBHOOK_URL")
+
+def send_to_discord(webhook_url, content, label):
+    if not webhook_url:
+        print(f"{label}: webhook URL missing", flush=True)
+        return
+
+    try:
+        response = requests.post(
+            webhook_url,
+            json={"content": content},
+            timeout=15
+        )
+        print(f"{label}: discord status = {response.status_code}", flush=True)
+        print(f"{label}: discord response = {response.text}", flush=True)
+
+        if response.status_code == 429:
+            print(f"{label}: rate limited by Discord", flush=True)
+
+    except Exception as e:
+        print(f"{label}: error sending to Discord: {e}", flush=True)
 
 @app.route("/")
 def home():
@@ -16,15 +37,9 @@ def home():
 def feedback():
     data = request.json
     print("FEEDBACK HIT:", data, flush=True)
-    print("FEEDBACK WEBHOOK SET:", bool(FEEDBACK_WEBHOOK), flush=True)
 
-    message = {
-        "content": f"📝 New feedback:\n{data}"
-    }
-
-    r = requests.post(FEEDBACK_WEBHOOK, json=message)
-    print("FEEDBACK DISCORD STATUS:", r.status_code, flush=True)
-    print("FEEDBACK DISCORD RESPONSE:", r.text, flush=True)
+    content = f"📝 New feedback:\n```{data}```"
+    send_to_discord(FEEDBACK_WEBHOOK, content, "FEEDBACK")
 
     return "OK", 200
 
@@ -32,14 +47,11 @@ def feedback():
 def restock():
     data = request.json
     print("RESTOCK HIT:", data, flush=True)
-    print("RESTOCK WEBHOOK SET:", bool(RESTOCK_WEBHOOK), flush=True)
 
-    message = {
-        "content": f"📦 Restock:\n{data}"
-    }
+    # maza pauze, kad sumazintu spam / limitu tikimybe
+    time.sleep(1)
 
-    r = requests.post(RESTOCK_WEBHOOK, json=message)
-    print("RESTOCK DISCORD STATUS:", r.status_code, flush=True)
-    print("RESTOCK DISCORD RESPONSE:", r.text, flush=True)
+    content = f"📦 Restock:\n```{data}```"
+    send_to_discord(RESTOCK_WEBHOOK, content, "RESTOCK")
 
     return "OK", 200
